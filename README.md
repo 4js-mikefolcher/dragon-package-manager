@@ -15,6 +15,7 @@ In addition to Perl, the following Perl libraries must be installed:
 - IO::Socket::SSL
 - Data::Dumper
 - Getopt::Std
+- File::Copy
 
 You can use cpan (the Perl package manager) to install these libraries. For
 example: 
@@ -32,6 +33,8 @@ Genero packages.  It has 4 main commands that are currently supported.
 ## TODO Items
 The following items are planned but have not been implemented yet.
 - Remove command to remove an installed package
-- Allow packages to be loaded from disk, currently the packages must be available via HTTP
+- ~~Allow packages to be loaded from disk, currently the packages must be available via HTTP~~
 - Add debug command to display messages
-- Code cleanup
+- Code cleanup and source code documentation
+- Cleanup temporary files from the .dragon directory
+- Add more documentation to the README.md

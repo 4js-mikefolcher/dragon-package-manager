@@ -9,6 +9,7 @@ use LWP::UserAgent;
 use IO::Socket::SSL;
 use Data::Dumper;
 use Getopt::Std;
+use File::Copy;
 
 my $default_root_url = "https://fourjsusa.jfrog.io/artifactory/genero-tools";
 
@@ -98,6 +99,26 @@ sub create_package {
 
 }
 
+sub fetch_uri {
+
+    my $l_baseuri = shift;
+    my $l_package_name = shift;
+    my $l_genero_version = shift;
+    my $l_package_version = shift;
+
+    my $l_package_file = get_package_zip_file($l_package_name);
+    my $l_file_path = $l_baseuri;
+    $l_file_path .= "/g${l_genero_version}/v${l_package_version}/${l_package_file}";
+
+    my $l_tmp_dir = get_tmp_dir();
+    my $l_tmp_package = "${l_tmp_dir}/$l_package_file";
+
+    print "Copying $l_file_path to $l_tmp_package \n";
+    copy($l_file_path, $l_tmp_package);
+    return $l_tmp_package;
+
+}
+
 sub fetch_package {
 
     my $l_baseurl = shift;
@@ -105,6 +126,10 @@ sub fetch_package {
     my $l_genero_version = shift;
     my $l_package_version = shift;
     my @l_headers = @_;
+
+    if ($l_baseurl =~ /^file[:]/i) {
+       return fetch_uri($l_baseurl, $l_package_name, $l_genero_version, $l_package_version);
+    }
 
     my $l_package_file = get_package_zip_file($l_package_name);
 
@@ -172,7 +197,10 @@ sub do_install {
 
    #Get the repo url and HTTP headers
    my $l_url = $l_repo_info->{$l_repo_name}->{url};
-   my @l_headers = @{$l_repo_info->{$l_repo_name}->{header}};
+   my @l_headers = ();
+   if (defined $l_repo_info->{$l_repo_name}->{header}) {
+      @l_headers = @{$l_repo_info->{$l_repo_name}->{header}};
+   }
 
    #Fetch the zip file
    my $l_zip_file = fetch_package($l_url, $l_package, $l_genero, $l_version, @l_headers);
@@ -572,7 +600,10 @@ sub install_block {
 
    #Get the repo url and HTTP headers
    my $l_url = $l_repo_info->{$l_repo}->{url};
-   my @l_headers = @{$l_repo_info->{$l_repo}->{header}};
+   my @l_headers = ();
+   if (defined $l_repo_info->{$l_repo}->{header}) {
+      @l_headers = @{$l_repo_info->{$l_repo}->{header}};
+   }
 
    #Fetch the zip file
    my $l_zip_file = fetch_package($l_url, $l_package, $l_genero, $l_version, @l_headers);
