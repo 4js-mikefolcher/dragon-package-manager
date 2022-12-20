@@ -7,7 +7,7 @@ packages in you project.  It is written in Perl and is a single monolithic
 file with a few dependencies.
 
 ## Prerequisites
-Perl must be installed
+Perl must be installed.
 In addition to Perl, the following Perl libraries must be installed:
 - Archive::Zip
 - XML::Simple
