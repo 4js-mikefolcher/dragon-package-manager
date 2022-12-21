@@ -11,7 +11,21 @@ use Data::Dumper;
 use Getopt::Std;
 use File::Copy;
 
-my $default_root_url = "https://fourjsusa.jfrog.io/artifactory/genero-tools";
+my $debug_mode = 0;
+
+sub println {
+
+   foreach my $l_line (@_) {
+      print $l_line . "\n";
+   }
+
+}
+
+sub debug_print {
+
+   println(@_) if ($debug_mode > 0);
+
+}
 
 sub get_package_zip_file {
 
@@ -20,6 +34,7 @@ sub get_package_zip_file {
    if ($l_package_name =~ /\.([A-z0-9_-]+)$/) {
       $l_zip_name = $1 . ".zip";
    }
+   debug_print("get_package_name returning $l_zip_name");
    return $l_zip_name;
 
 }
@@ -29,6 +44,7 @@ sub get_package_dir_path {
    my $l_package_name = shift;
    my $l_dir_path = $l_package_name;
    $l_dir_path =~ s/\./\//g;
+   debug_print("get_package_dir_path returning $l_dir_path");
    return $l_dir_path;
 
 }
@@ -37,8 +53,10 @@ sub get_tmp_dir {
 
     my $l_tmp_dir = ".dragon";
     if (! -d $l_tmp_dir) {
+       debug_print("making dragon work directory $l_tmp_dir");
        mkdir $l_tmp_dir;
     }
+    debug_print("get_tmp_dir returning $l_tmp_dir");
     return $l_tmp_dir;
 }
 
@@ -49,10 +67,13 @@ sub get_user_dir {
       $l_home = $ENV{"USERPROFILE"};
       die "Could not determine home directory " unless (-d $l_home);
    }
+   debug_print("determined user home directory is $l_home");
    my $l_user_tmp = $l_home . "/.dragon";
    if (! -d $l_user_tmp) {
+      debug_print("making dragon config directory $l_user_tmp");
       mkdir($l_user_tmp, 0700);
    }
+   debug_print("get_user_dir returning $l_user_tmp");
    return $l_user_tmp;
 
 }
@@ -70,6 +91,7 @@ sub create_package {
    } else {
       $l_dir_path = $l_package_path;
    }
+   debug_print("Using package path of $l_dir_path");
 
    if (! -d $l_dir_path) {
       die "Directory $l_dir_path does not exist!\n";
@@ -83,18 +105,20 @@ sub create_package {
 
    my $l_basename = $l_zip_name;
    if ($l_basename =~ /\/([A-z0-9._-]+)$/) {
+      debug_print("Setting package basename to $l_basename");
       $l_basename = $1;
    }
 
-   print "Package zip created: $l_zip_name \n";
-   print "Package name: $l_package_info{'package'} \n";
-   print "Genero Version: $l_package_info{'genero-version'} \n";
-   print "Version: $l_package_info{'version'} \n";
-   print "Package URL path should be: " .
+   println("Package zip created: $l_zip_name");
+   println("Package name: $l_package_info{'package'}");
+   println("Genero Version: $l_package_info{'genero-version'}");
+   println("Version: $l_package_info{'version'}");
+   println("Package URL path should be: " .
          "g" . $l_package_info{'genero-version'} . "/" .
          "v" . $l_package_info{'version'} . "/" .
-         $l_basename . "\n";
+         $l_basename);
 
+   debug_print("create_package returning $l_zip_name");
    return $l_zip_name;
 
 }
@@ -109,12 +133,15 @@ sub fetch_uri {
     my $l_package_file = get_package_zip_file($l_package_name);
     my $l_file_path = $l_baseuri;
     $l_file_path .= "/g${l_genero_version}/v${l_package_version}/${l_package_file}";
+    debug_print("Using URI file path $l_file_path to install/update package");
 
     my $l_tmp_dir = get_tmp_dir();
     my $l_tmp_package = "${l_tmp_dir}/$l_package_file";
 
-    print "Copying $l_file_path to $l_tmp_package \n";
+    println("Copying $l_file_path to $l_tmp_package");
     copy($l_file_path, $l_tmp_package);
+
+    debug_print("fetch_uri returning $l_tmp_package");
     return $l_tmp_package;
 
 }
@@ -154,8 +181,8 @@ sub fetch_package {
     if ($res->is_success) {
        $content = $res->content;
     } else {
-       print "HTTP GET error code: " . $res->code . "\n";
-       print "HTTP GET error message: " . $res->message . "\n";
+       println("HTTP GET error code: " . $res->code);
+       println("HTTP GET error message: " . $res->message);
        die "Error: $res->status_line, \n";
     }
 
@@ -184,7 +211,7 @@ sub unzip_package {
    die "Read of $l_zip failed\n" if $l_status != AZ_OK;
 
    foreach my $l_member (@l_members) {
-      print "Extracting $l_member to ${l_target_dir}/${l_member} \n";
+      println("Extracting $l_member to ${l_target_dir}/${l_member}");
       $l_zip->extractMember($l_member, "${l_target_dir}/${l_member}");
    }
 
@@ -219,13 +246,15 @@ sub read_package_xml {
       die "File $l_package_file does not exist!\n";
    }
 
+   debug_print("Reading file $l_package_file");
    my $ref = XMLin($l_package_file);
-   #print Dumper($ref);
+   debug_print(Dumper($ref));
    my %l_hash = ();
    $l_hash{"package"} = $ref->{"name"};
    $l_hash{"genero-version"} = $ref->{"genero-version"};
    $l_hash{"version"} = $ref->{"version"};
 
+   debug_print("read_package_xml returning " . Dumper(%l_hash));
    return %l_hash;
 
 }
@@ -238,6 +267,7 @@ sub init_dragon_xml {
       open my $l_xml_handler, '>:encoding(iso-8859-1)', $l_xml_file or die "open($l_xml_file): $!";
       XMLout($l_ref, RootName => 'packages', OutputFile => $l_xml_handler);
       close $l_xml_handler;
+      debug_print("init_dragon_xml created an empty dragon.xml file");
    }
 
 }
@@ -250,6 +280,8 @@ sub read_dragon_xml {
    }
 
    my $l_ref = XMLin($l_dragon_xml, ForceArray => ['package', 'name'], NoAttr => 1);
+
+   debug_print("read_dragon_xml returning " . Dumper($l_ref));
    return $l_ref;
 
 }
@@ -261,9 +293,6 @@ sub write_dragon_xml {
    my $l_dragon_xml = "dragon.xml";
 
    my $l_xmlref = get_install_list();
-
-   #print "xmlref after call to get_install_list()\n";
-   #print Dumper($l_xmlref);
 
    my $l_found = 0;
    my $l_count = 0;
@@ -281,23 +310,21 @@ sub write_dragon_xml {
       $l_count++;
    }
 
-   #print "xmlref after call to foreach\n";
-   #print "Count: $l_count and found: $l_found \n";
-   #print Dumper($l_xmlref);
+   debug_print("Count: $l_count and found: $l_found for writing to $l_dragon_xml");
+   debug_print(Dumper($l_xmlref));
 
    if ($l_found == 0) {
         $l_xmlref->{packages}->{package}[$l_count]->{name} = $l_package;
         $l_xmlref->{packages}->{package}[$l_count]->{version} = $l_version;
         $l_xmlref->{packages}->{package}[$l_count]->{repo} = $l_repo_name;
         $l_xmlref->{packages}->{package}[$l_count]->{genero} = $l_genero;
+        debug_print("Package $l_package added to the $l_dragon_xml");
    }
 
-   #print "xmlref after found logic \n";
-   #print Dumper($l_xmlref);
    open my $l_xml_handler, '>:encoding(iso-8859-1)', $l_dragon_xml or die "open($l_dragon_xml): $!";
    XMLout($l_xmlref, KeepRoot => 1, NoAttr => 1, OutputFile => $l_xml_handler);
 
-   print "Package $l_package has been added to your dragon.xml file\n";
+   println("Package $l_package has been added to your dragon.xml file");
 
 }
 
@@ -306,9 +333,6 @@ sub get_install_list {
    my $l_dragon_xml = "dragon.xml";
 
    my $l_ref = read_dragon_xml();
-
-   #print "Reading dragon.xml values\n";
-   #print Dumper($l_ref);
 
    my $l_xmlref = {};
    my $l_count = 0;
@@ -323,13 +347,11 @@ sub get_install_list {
       $l_xmlref->{packages}->{package}[$l_count]->{repo} = $l_packref->{repo};
       $l_xmlref->{packages}->{package}[$l_count]->{genero} = $l_packref->{genero};
       $l_count++;
-      print "Adding $l_name package\n";
+      println("Adding $l_name package");
 
    }
 
-   #print "After xmlref translation\n";
-   #print Dumper($l_xmlref);
-
+   debug_print("get_install_list returning " . Dumper($l_xmlref));
    return $l_xmlref;
 
 }
@@ -339,7 +361,7 @@ sub update_package {
    my ($l_repo_name, $l_package, $l_version, $l_genero) = @_;
 
    do_install($l_repo_name, $l_package, $l_version, $l_genero);
-   print "Package $l_package has been updated\n";
+   println("Package $l_package has been updated");
 
 }
 
@@ -353,17 +375,17 @@ sub update_single_package {
    foreach my $l_packref (@{$l_xmlref->{packages}->{package}}) {
       my $l_name = $l_packref->{name};
       if ($l_name eq $l_package) {
+         debug_print("Package $l_package found in dragon.xml install file");
          my $l_repo = $l_packref->{repo};
          my $l_version = $l_packref->{version};
          my $l_genero = $l_packref->{genero};
          update_package($l_repo, $l_name, $l_version, $l_genero);
-
          $l_found = 1;
          last;
       }
    }
 
-   print "Package $l_package was not found in your dragon.xml file\n" unless $l_found == 1;
+   println("Package $l_package was not found in your dragon.xml file") unless $l_found == 1;
 
 }
 
@@ -376,6 +398,7 @@ sub update_all_packages {
       my $l_repo = $l_packref->{repo};
       my $l_version = $l_packref->{version};
       my $l_genero = $l_packref->{genero};
+      debug_print("Updating package $l_name from repo $l_repo");
       update_package($l_repo, $l_name, $l_version, $l_genero);
    }
 
@@ -388,14 +411,16 @@ sub write_repo_file {
 
    my $l_filepath = get_user_dir() . "/" . $l_name . ".xml";
    open my $l_repo_handler, '>:encoding(iso-8859-1)', $l_filepath or die "open($l_filepath): $!";
+   debug_print("Writing to repo file $l_filepath");
 
    my $l_hashref = {};
    $l_hashref->{$l_name}->{name} = $l_name;
    $l_hashref->{$l_name}->{url} = $l_url;
    @{$l_hashref->{$l_name}->{header}} = @l_headers;
+   debug_print("Repo file contains: " . Dumper($l_hashref));
    XMLout($l_hashref, RootName => 'repo', OutputFile => $l_repo_handler);
    close $l_repo_handler;
-   print "Repo file $l_filepath created \n";
+   println("Repo file $l_filepath created");
 
 }
 
@@ -407,10 +432,10 @@ sub read_repo_file {
    if (! -f $l_filepath) {
       die "Repo file $l_filepath does not exist!\n";
    }
-
+   debug_print("Reading repo file $l_filepath");
    my $ref = XMLin($l_filepath, ForceArray => qr/header$/);
-   #print Dumper($ref->{$l_name});
 
+   debug_print("read_repo_file returning " . Dumper($ref));
    return $ref;
 
 }
@@ -425,11 +450,15 @@ sub get_repo_list {
       if ($filename =~ /(.*)\.xml/i) {
          my $repo = $1;
          $repos{$repo} = 0 unless exists($repos{$repo});
+         debug_print("Processing repo file $filename");
       } elsif ($filename =~ /(.*)\.default/i) {
          $repos{$1} = 1;
+         debug_print("Found default repo $1");
       }
    }
    closedir($dh);
+
+   debug_print("get_repo_list returning " . Dumper(%repos));
    return %repos;
 
 }
@@ -440,10 +469,12 @@ sub get_default_repo {
 
    for my $l_repo (keys %l_repo_list) {
       if ($l_repo_list{$l_repo} == 1) {
+         debug_print("get_default_repo returning $l_repo");
          return $l_repo;
       }
    }
 
+   debug_print("get_default_repo returning empty string, no default repo found");
    return "";
 
 }
@@ -458,6 +489,7 @@ sub make_repo_default {
       if ($repos{$key} == 1) {
          my $l_old_default = get_user_dir() . "." . $key . ".default";
          unlink $l_old_default || die "Could not remove file $l_old_default \n";
+         debug_print("Removing the old default repo file $l_old_default");
          last;
       }
    }
@@ -465,6 +497,7 @@ sub make_repo_default {
    open DEFAULTFILE, "> $l_repo_default" || die "Cannot create $l_repo_default for writing: $! \n";
    print DEFAULTFILE $l_name . "\n";
    close DEFAULTFILE;
+   debug_print("Created new default repo file $l_repo_default");
 
 }
 
@@ -476,33 +509,14 @@ sub remove_repo {
 
    if (-f $l_repo_default) {
       unlink $l_repo_default;
+      debug_print("Removing file $l_repo_default");
    }
 
    if (-f $l_repo_xml) {
       unlink $l_repo_xml;
-      print "Repo $l_name has been removed\n";
+      println("Repo $l_name has been removed");
    } else {
-      print "Repo $l_name does not exist\n";
-   }
-
-}
-
-sub run_tests {
-
-   #Test package creation
-   my $zip_file = create_package("com.fourjs.RESTLibrary");
-   print "Zip file $zip_file created!\n";
-   if (-f $zip_file) {
-      print "File ( $zip_file ) exists! \n";
-      unlink($zip_file) || die "Could not delete file $zip_file !\n";
-   }
-
-   #Test package fetch
-   $zip_file = fetch_package("4.01", "1.0", "com.fourjs.RESTLibrary");
-   print "Zip file $zip_file created!\n";
-   if (-f $zip_file) {
-      print "File ( $zip_file ) exists! \n";
-      unlink($zip_file) || die "Could not delete file $zip_file !\n";
+      println("Repo $l_name does not exist");
    }
 
 }
@@ -526,13 +540,14 @@ sub create_block {
    if (defined $options{p}) {
       $l_package_name = $options{p};
    } else {
-      print "Error: A package was not specified\n";
+      println("Error: A package was not specified");
       create_usage();
       return;
    }
 
    if (defined $options{d}) {
       $l_directory = $options{d};
+      debug_print("Using create directory $l_directory");
    }
 
    create_package($l_package_name, $l_directory);
@@ -541,12 +556,12 @@ sub create_block {
 
 sub create_usage {
 
-   print "Usage: dragon.pl create -p [package] -d [directory] \n";
-   print "Description: Create a Genero package\n";
-   print "\tOption\t\tDescription\n";
-   print "\t------\t\t-----------\n";
-   print "\t-p\t\t(Required) Name of the package, example: com.fourjs.Example\n";
-   print "\t-d\t\t(Optional) Directory path where the root package directory exists, example 'build'\n";
+   println("Usage: dragon.pl create -p [package] -d [directory]");
+   println("Description: Create a Genero package");
+   println("\tOption\t\tDescription");
+   println("\t------\t\t-----------");
+   println("\t-p\t\t(Required) Name of the package, example: com.fourjs.Example");
+   println("\t-d\t\t(Optional) Directory path where the root package directory exists, example 'build'");
 
 }
 
@@ -573,7 +588,7 @@ sub install_block {
    if (defined $l_repo) {
       $l_repo_info = read_repo_file($l_repo);
    } else {
-      print "Package repository not defined\n";
+      println("Package repository not defined");
       install_usage();
    }
 
@@ -581,7 +596,7 @@ sub install_block {
    if (defined $options{p}) {
       $l_package = $options{p};
    } else {
-      print "Package is missing or invalid\n";
+      println("Package is missing or invalid");
       install_usage();
    }
 
@@ -594,7 +609,7 @@ sub install_block {
    if (defined $options{g}) {
       $l_genero = $options{g};
    } else {
-      print "Genero version has not been specified\n";
+      println("Genero version has not been specified");
       install_usage();
    }
 
@@ -604,6 +619,8 @@ sub install_block {
    if (defined $l_repo_info->{$l_repo}->{header}) {
       @l_headers = @{$l_repo_info->{$l_repo}->{header}};
    }
+   debug_print("Using HTTP headers");
+   debug_print(@l_headers);
 
    #Fetch the zip file
    my $l_zip_file = fetch_package($l_url, $l_package, $l_genero, $l_version, @l_headers);
@@ -622,14 +639,14 @@ sub install_block {
 
 sub install_usage {
 
-   print "Usage: dragon.pl install -p [package] -r [repo] -v [version] -g [genero-version] \n";
-   print "Description: Install a new package in the current working directory\n";
-   print "\tOption\t\tDescription\n";
-   print "\t------\t\t-----------\n";
-   print "\t-p\t\t(Required) Name of the package, example: com.fourjs.Example\n";
-   print "\t-r\t\t(Optional) Use a named repo defined with dragon.pl repo, will use the default if not specified\n";
-   print "\t-v\t\t(Optional) Install a specific version of the package, will install the latest if not specified\n";
-   print "\t-g\t\t(Required) Install a version compatible with a specific Genero version\n";
+   println("Usage: dragon.pl install -p [package] -r [repo] -v [version] -g [genero-version]");
+   println("Description: Install a new package in the current working directory");
+   println("\tOption\t\tDescription");
+   println("\t------\t\t-----------");
+   println("\t-p\t\t(Required) Name of the package, example: com.fourjs.Example");
+   println("\t-r\t\t(Optional) Use a named repo defined with dragon.pl repo, will use the default if not specified");
+   println("\t-v\t\t(Optional) Install a specific version of the package, will install the latest if not specified");
+   println("\t-g\t\t(Required) Install a version compatible with a specific Genero version");
 
 }
 
@@ -656,11 +673,11 @@ sub update_block {
 
 sub update_usage {
 
-   print "Usage: dragon.pl update -p [package] \n";
-   print "Description: Updates packages based on what is in dragon.xml, you can alternatively update just one package\n";
-   print "\tOption\t\tDescription\n";
-   print "\t------\t\t-----------\n";
-   print "\t-p\t\t(Optional) Name of the package, example: com.fourjs.Example\n";
+   println("Usage: dragon.pl update -p [package]");
+   println("Description: Updates packages based on what is in dragon.xml, you can alternatively update just one package");
+   println("\tOption\t\tDescription");
+   println("\t------\t\t-----------");
+   println("\t-p\t\t(Optional) Name of the package, example: com.fourjs.Example");
 
 }
 
@@ -687,15 +704,15 @@ sub repo_block {
    #list all the available repos
    if (defined $options{l}) {
       my %repos = get_repo_list();
-      print "dragon.pl - Artifact Repositories defined\n";
+      println("dragon.pl - Artifact Repositories defined");
       foreach my $key (keys(%repos)) {
          if ($repos{$key} == 1) {
-            print "\tRepository Name: $key (default)\n";
+            println("\tRepository Name: $key (default)");
          } else {
-            print "\tRepository Name: $key\n";
+            println("\tRepository Name: $key");
          }
          my $ref = read_repo_file($key);
-         print "\tRepository URL: " . $ref->{$key}->{url} . "\n\n";
+         println("\tRepository URL: " . $ref->{$key}->{url} . "\n");
       }
       return;
    }
@@ -717,7 +734,7 @@ sub repo_block {
       if (exists($repos{$l_name})) {
          make_repo_default($l_name);
       } else {
-         print "No repo named $l_name has been defined!\n";
+         println("No repo named $l_name has been defined!");
       }
    }
 
@@ -731,42 +748,47 @@ sub repo_block {
 
 sub repo_usage {
 
-   print "Usage: dragon.pl repo -l -r [repo name] -a [repo name] -d [repo name] -k [header key info] -u [repo root URL]\n";
-   print "Description: Create a Genero package\n";
-   print "\tOption\t\tDescription\n";
-   print "\t------\t\t-----------\n";
-   print "\t-l\t\tList all the repos defined by the user\n";
-   print "\t-r\t\tRemove a repo defined for the user\n";
-   print "\t-a\t\tAdd a new repo for Genero packages\n";
-   print "\t-d\t\tSet the specified repo as the default for Genero packages\n";
-   print "\t-k\t\tSpecify HTTP request header information, use a comma to separate if there are multiple,\n";
-   print "\t\t\t  example: \"X-JFrog-Art-Api: XYZe1kWXuIqV833907QwXzfGiUUdYGuPXnTLFv59EhvRNh6JjMPnUqNq38W9MMFsinTYKgSAt\"\n";
-   print "\t-u\t\tSpecify HTTP request root URL for the package repo,\n";
-   print "\t\t\t  example: https://fourjsusa.jfrog.io/artifactory/genero-tools\n";
+   println("Usage: dragon.pl repo -l -r [repo name] -a [repo name] -d [repo name] -k [header key info] -u [repo root URL]");
+   println("Description: Create a Genero package");
+   println("\tOption\t\tDescription");
+   println("\t------\t\t-----------");
+   println("\t-l\t\tList all the repos defined by the user");
+   println("\t-r\t\tRemove a repo defined for the user");
+   println("\t-a\t\tAdd a new repo for Genero packages");
+   println("\t-d\t\tSet the specified repo as the default for Genero packages");
+   println("\t-k\t\tSpecify HTTP request header information, use a comma to separate if there are multiple,");
+   println("\t\t\t  example: \"X-JFrog-Art-Api: XYZe1kWXuIqV833907QwXzfGiUUdYGuPXnTLFv59EhvRNh6JjMPnUqNq38W9MMFsinTYKgSAt\"");
+   println("\t-u\t\tSpecify HTTP request root URL for the package repo,");
+   println("\t\t\t  example: https://fourjsusa.jfrog.io/artifactory/genero-tools");
 
 }
 
 sub dragon_usage {
 
-   print "Usage: dragon.pl [create|install|update|remove|repo] [options]\n";
-   print "Description: The dragon.pl Genero package manager allows users to manage the package dependencies\n\n";
+   println("Usage: dragon.pl [create|install|update|remove|repo] [options]");
+   println("Description: The dragon.pl Genero package manager allows users to manage the package dependencies\n");
 
    create_usage();
-   print "\n";
+   println("");
 
    repo_usage();
-   print "\n";
+   println("");
 
    install_usage();
-   print "\n";
+   println("");
 
    update_usage();
-   print "\n";
+   println("");
 
 }
 
 my $cmd = shift;
 dragon_usage() && exit 1 unless defined $cmd;
+
+if ($cmd eq "debug") {
+   $debug_mode = 1;
+   $cmd = shift;
+}
 
 if ($cmd eq "create") {
    create_block();

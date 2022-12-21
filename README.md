@@ -34,7 +34,7 @@ Genero packages.  It has 4 main commands that are currently supported.
 The following items are planned but have not been implemented yet.
 - Remove command to remove an installed package
 - ~~Allow packages to be loaded from disk, currently the packages must be available via HTTP~~
-- Add debug command to display messages
+- ~~Add debug command to display messages~~
 - Code cleanup and source code documentation
 - Cleanup temporary files from the .dragon directory
 - Add more documentation to the README.md
