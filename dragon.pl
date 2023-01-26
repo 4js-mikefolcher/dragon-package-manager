@@ -10,6 +10,7 @@ use IO::Socket::SSL;
 use Data::Dumper;
 use Getopt::Std;
 use File::Copy;
+use URI;
 
 my $debug_mode = 0;
 
@@ -139,7 +140,7 @@ sub fetch_uri {
     my $l_tmp_package = "${l_tmp_dir}/$l_package_file";
 
     println("Copying $l_file_path to $l_tmp_package");
-    copy($l_file_path, $l_tmp_package);
+    copy($l_file_path, $l_tmp_package) || die "Failed to copy $l_file_path to $l_tmp_package:$!\n";
 
     debug_print("fetch_uri returning $l_tmp_package");
     return $l_tmp_package;
@@ -155,6 +156,8 @@ sub fetch_package {
     my @l_headers = @_;
 
     if ($l_baseurl =~ /^file[:]/i) {
+       $l_baseurl = URI->new($l_baseurl)->path();
+       debug_print("using $l_baseurl as the base file path");
        return fetch_uri($l_baseurl, $l_package_name, $l_genero_version, $l_package_version);
     }
 
