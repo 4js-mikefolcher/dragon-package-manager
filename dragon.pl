@@ -13,6 +13,7 @@ use File::Copy;
 use URI;
 
 my $debug_mode = 0;
+my $fourjs_usa_repo = "https://github.com/4js-mikefolcher/dragon-archive/raw/main";
 
 sub println {
 
@@ -132,8 +133,10 @@ sub fetch_uri {
     my $l_package_version = shift;
 
     my $l_package_file = get_package_zip_file($l_package_name);
+    my $l_base_package_name = $l_package_file;
+    $l_base_package_name =~ s/\.zip//;
     my $l_file_path = $l_baseuri;
-    $l_file_path .= "/g${l_genero_version}/v${l_package_version}/${l_package_file}";
+    $l_file_path .= "/${l_base_package_name}/g${l_genero_version}/v${l_package_version}/${l_package_file}";
     debug_print("Using URI file path $l_file_path to install/update package");
 
     my $l_tmp_dir = get_tmp_dir();
@@ -170,7 +173,11 @@ sub fetch_package {
        verify_hostname => 0
     );
 
-    my $url = "${l_baseurl}/g${l_genero_version}/v${l_package_version}/${l_package_file}";
+
+    my $l_base_package_name = $l_package_file;
+    $l_base_package_name =~ s/\.zip//;
+
+    my $url = "${l_baseurl}/${l_base_package_name}/g${l_genero_version}/v${l_package_version}/${l_package_file}";
     my $req = HTTP::Request->new(GET => $url);
     for my $l_header (@l_headers) {
        my @l_pieces = split(/:/, $l_header);
@@ -766,6 +773,34 @@ sub repo_usage {
 
 }
 
+sub config_block {
+
+   # declare the perl command line flags/options we want to allow
+   my %options=();
+   getopts("h", \%options);
+
+   #if the help flag is set, show the usage and return
+   if (defined $options{h}) {
+      config_usage();
+      return;
+   }
+
+   my $l_name = "fourjsusa";
+   my $l_url = $fourjs_usa_repo;
+   my @l_keys = ();
+   write_repo_file($l_name, $l_url, @l_keys);
+   make_repo_default($l_name);
+   println("Created default repo $l_name");
+
+}
+
+sub config_usage {
+
+   println("Usage: dragon.pl config");
+   println("Description: Configure the dragon package manager");
+
+}
+
 sub dragon_usage {
 
    println("Usage: dragon.pl [create|install|update|remove|repo] [options]");
@@ -781,6 +816,9 @@ sub dragon_usage {
    println("");
 
    update_usage();
+   println("");
+
+   config_usage();
    println("");
 
 }
@@ -803,6 +841,8 @@ if ($cmd eq "create") {
    remove_block();
 } elsif ($cmd eq "repo") {
    repo_block();
+} elsif ($cmd eq "config") {
+   config_block();
 } else {
    dragon_usage();
    exit 1;

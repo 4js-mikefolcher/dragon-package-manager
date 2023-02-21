@@ -28,7 +28,7 @@ Genero packages.  It has 4 main commands that are currently supported.
 - install: Install a new package
 - update: Update existing packages based on the dragon.xml file
 - repo: Add or Remove a distribution repository for installing packages
-
+- config: Adds the default repo from Github: https://github.com/4js-mikefolcher/dragon-archive
 
 ## TODO Items
 The following items are planned but have not been implemented yet.
@@ -38,3 +38,5 @@ The following items are planned but have not been implemented yet.
 - Code cleanup and source code documentation
 - Cleanup temporary files from the .dragon directory
 - Add more documentation to the README.md
+- Support dependencies by downloading and install dependencies in the package.xml file
+
